@@ -41,7 +41,10 @@ const removeToken = (id) => {
 		if (t.id !== id) {return t;}
 	});
 };
+let a = 0;
 const middlewareFunction = (req, res, next) => {
+    a = a + 1;
+	console.log('url: ', a, req.url);
 	// get cookie id
 	const id = req.signedCookies.uuid;
 
@@ -82,18 +85,40 @@ const middlewareFunction = (req, res, next) => {
 
 		if (!reauth) {next();}
 	} else {
-		authClient.authenticate().then(url => {
-			res.redirect(url);
-		}).catch(error => {
-			res.send(error);
-		});
+		console.log('redirect to: http://localhost:3000/login');
+		res.redirect('http://localhost:3000/login');
+		// authClient.authenticate().then(url => {
+		// 	res.redirect(url);
+		// }).catch(error => {
+		// 	res.send(error);
+		// });
 	}
+
 };
+
+let count = 0;
+function logUrl(req){
+	count = count + 1;
+	console.log("url-- : ", count, req.url);
+}
+
+app.get('/login', (req, res) => {
+	logUrl(req);
+    authClient.authenticate().then(url => {
+		console.log('authenticate redirect url: ', url);
+        res.redirect(url);
+    }).catch(error => {
+        res.send(error);
+    })
+})
+
 app.get('/', middlewareFunction, (req, res) => {
+	logUrl(req);
 	res.sendFile(path.join(__dirname, '/front-end', 'dashboard.html'));
 });
 // user has authenticated through CI, now get the token
 app.get(process.env.REDIRECT_URI_ROUTE, (req, res) => {
+	logUrl(req);
 	authClient.getToken(req.url).then(token => {
 		// check if this is a returning user
 		let id = req.signedCookies.uuid;
@@ -112,8 +137,10 @@ app.get(process.env.REDIRECT_URI_ROUTE, (req, res) => {
 
 		// store and associate token to the user
 		usersToToken.push({id: id, token: token});
+		console.log('getToken: ok');
+		res.json({"ok": "ok"});
 		// redirect to root
-		res.redirect('/');
+		// res.redirect('/');
 	}).catch(error => {
 		res.send('ERROR: ' + JSON.stringify(error, null, 4));
 	});
@@ -122,12 +149,14 @@ app.get(process.env.REDIRECT_URI_ROUTE, (req, res) => {
 // delete token from storage
 app.get('/logout', middlewareFunction, (req, res) => {
 	// get id from cookie
+	logUrl(req);
 	const id = req.signedCookies.uuid;
 	removeToken(id);
 	res.redirect('/');
 });
 
 app.get('/api/userinfo', middlewareFunction, (req, res) => {
+	logUrl(req);
 	authClient.userInfo(req.token)
 		.then(r => {
 			res.json(r);
